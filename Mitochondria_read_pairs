@@ -1,0 +1,30 @@
+#Generate 100 base pair read pairs from a 500 bp subsequence of Human Mitochondria fasta sequence:
+#For parsing Fasta file
+
+#Python3
+
+from Bio import SeqIO
+
+#Parsing Fasta file
+for record in SeqIO.parse("example.fasta", "fasta"):
+    print(record.id)    #To get the id of the records in the fasta file
+    print(record.seq)   #To get the actual sequence
+    print(len(record.seq))   #Length of sequence
+    print(record.seq[start:end])   #Slicing the sequence
+
+#Paired end reads for given mitochondrial sequence
+for record in SeqIO.parse("NC_012920.1.fasta","fasta"):
+    subseq = record.seq[8200:8700]
+    print("read_1 =", subseq[0:100])
+    read_2 = subseq[400:]
+    print("read_2 =", read_2.reverse_complement())
+
+#Paired end reads for reverse complement of the given mitochondrial sequence
+for record in SeqIO.parse("NC_012920.1.fasta","fasta"):
+    subseq = record.seq[8200:8700]
+    #print(subseq)
+    rc_seq = subseq.reverse_complement()
+    #print(rc_seq)
+    print("rc_seq_read_1 =", rc_seq[0:100])
+    rc_seq_read_2 = rc_seq[400:]
+    print("rc_seq_read_2 =", rc_seq_read_2.reverse_complement())
