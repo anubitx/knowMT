@@ -28,3 +28,29 @@ for record in SeqIO.parse("NC_012920.1.fasta","fasta"):
     print("rc_seq_read_1 =", rc_seq[0:100])
     rc_seq_read_2 = rc_seq[400:]
     print("rc_seq_read_2 =", rc_seq_read_2.reverse_complement())
+
+
+#Alignment of the reads generated using bwa 
+#Install Bwa:
+
+$conda install -c bioconda bwa
+
+#index reference
+bwa index NC_012920.1.fasta
+ 
+#align the reads
+#Original mitochondrial sequence
+bwa aln NC_012920.1.fasta  read_1.txt > r1.sai
+bwa aln NC_012920.1.fasta  read_2.txt > r2.sai
+
+#Reverse complement sequence
+bwa aln NC_012920.1.fasta  rc_read_1.txt > rc_r1.sai
+bwa aln NC_012920.1.fasta  rc_read_2.txt > rc_r2.sai
+ 
+#generate the paired-end alignment
+bwa sampe -a 300 NC_012920.1.fasta r1.sai r2.sai read_1.txt read_2.txt > my_read.sam
+bwa sampe -a 300 NC_012920.1.fasta r1_rc.sai r2_rc.sai rc_read_1.txt rc_read_2.txt > my_read_rc.sam 
+
+#check the result
+cat my_read.sam 
+cat my_read_rc.sam
