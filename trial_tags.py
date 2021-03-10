@@ -23,8 +23,6 @@ for ref_numt in bed_file:
                 pass
             try:
                 if read_iv.is_contained_in(ref_numt.iv) == True:
-                    #print(read_iv, ref_numt.iv, mate_iv)
-                    #print("Read",ref_numt.iv)
                     if mate_iv.is_contained_in(ref_numt.iv) == True:
                         print(aln.get_sam_line() + "\t" + "Ni:Z:" + ref_numt.name + ",SCN,MCN," + str(ref_numt.iv.end - ref_numt.iv.start - 1) + ";")
                     elif mate_iv.overlaps(ref_numt.iv) == True:
