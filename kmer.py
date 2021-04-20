@@ -1,3 +1,6 @@
+import re
+from tqdm import tqdm
+
 def read_input_file(filename):
     with open(filename, 'r') as f:
         dna = f.read()
@@ -38,7 +41,7 @@ def build_kmers(sequence, ksize):
 import pysam
 
 bamfile = pysam.AlignmentFile('ERR1019039.MT.csort.alignment.numt_tag_new.bam', 'rb')
-# fasta_file = open('ERR1019039.numt_tag_maskedN.fasta', 'w')
+fasta_file = open('ERR1019039.numt_tag_maskedN1.fasta', 'w')
 
 Mt_string = read_input_file("chrM_string.txt")
 Mt_kmers = set(build_kmers(Mt_string, 31))
@@ -59,20 +62,40 @@ def check_kmers(sequence, ksize):
             modseq = kmer
     return modseq
 
-for aln in bamfile:
-    # print(aln.query_name)
+##Make a running set and add only /1 and /2 reads, we dont need the supplementary reads.
+#So write to the file only if not in set. 
+# Also only write the reads that have a contiguous strech of atleast 35 basepairs using regular expression. 
 
-    if aln.is_read1 == True:
-        # print('>' + aln.query_name + '/1' + '\n' + check_kmers(aln.query_sequence, 31) + '\n')
-        fasta_file.write('>' + aln.query_name + '/1' + '\n' + check_kmers(aln.query_sequence, 31) + '\n')
-    elif aln.is_read2 == True:
-        # print('>' + aln.query_name + '/2' + '\n' + check_kmers(aln.query_sequence, 31) + '\n')
-        fasta_file.write('>' + aln.query_name + '/2' + '\n' + check_kmers(aln.query_sequence, 31) + '\n')
-   
-   
+
+# counter = 0 
+no_sup = set()
+
+for aln in bamfile:
+    if  (aln.is_read1 == True) and (aln.query_name + '/1' not in no_sup):
+        ##Runs of ATGC longer than 35 bases.
+        result = re.findall(r"[ATGC]{36,}", check_kmers(aln.query_sequence, 31))
+        if len(result) > 0:
+            no_sup.add('>' + aln.query_name + '/1' + '\n' + check_kmers(aln.query_sequence, 31) + '\n')
+        # fasta_file.write('>' + aln.query_name + '/1' + '\n' + check_kmers(aln.query_sequence, 31) + '\n')
+    elif (aln.is_read2 == True) and (aln.query_name + '/2' not in no_sup):
+        result1 = re.findall(r"[ATGC]{36,}", check_kmers(aln.query_sequence, 31))
+        if len(result1) > 0:
+            no_sup.add('>' + aln.query_name + '/2' + '\n' + check_kmers(aln.query_sequence, 31) + '\n')
+        # fasta_file.write('>' + aln.query_name + '/2' + '\n' + check_kmers(aln.query_sequence, 31) + '\n')
+    # counter += 1
+    # if counter == 50:
+    #     break
+
+# for i in no_sup:
+    # fasta_file.write(i)
+
 # fasta_file.close()
-   
-   
+
+
+##We loose some pairs here because, there might be some reads where whose mates are not more than 35 bases long, 
+# we get rid of these reads. So we might have some single reads. 
+
+##Use Spades assembler for de novo assembly 
    
    
    
