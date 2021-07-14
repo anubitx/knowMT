@@ -12,9 +12,6 @@ from tqdm import tqdm
 ##It is accounted for, hence we use simplesam package.
 # y = simplesam.Sam(cigar = '5M5I5N5=')
 # print(len(y))
-
-# gr_read = pr.PyRanges(chromosomes = [read.reference_name], starts= [read.reference_start], ends = [read.reference_end])
-# gr_mate = pr.PyRanges(chromosomes = [read.next_reference_name], starts= [read.next_reference_start], ends = [read.next_reference_start + len(x)])
     
 class numt_chrM_overlapping_reads():
     def __init__(self, bed_file_path:str, bam_file_path:str ) -> None:
@@ -109,9 +106,7 @@ class numt_chrM_overlapping_reads():
             cmd = f" -o={out_path} -i={in_path}"
             cmd = p+cmd
             print(cmd)
-            s = subprocess.Popen([cmd], shell = True)
-            out, err = s.communicate()
+            s = subprocess.run([cmd], shell = True)
+            # s = subprocess.Popen([cmd], shell = True)
+            # out, err = s.communicate()
 
-
-
-# numt_chrM_overlapping_reads.read_bed(bed, bam)
