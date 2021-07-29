@@ -14,19 +14,21 @@ def copy_bam_files(bam_folderpath):
         # print(i)
 
 if __name__== "__main__":
-    hardcoded_path.make_dirs()
     parser = argparse.ArgumentParser()
     parser.add_argument("-max-ksize", default=35, type=int)
+    parser.add_argument("-threads", default=1, type=int)
     parser.add_argument("-min-ksize", default=17, type=int)
-    parser.add_argument("-bed-filename", default=None, type=str)
-    parser.add_argument("-bam-folderpath", default=None, type=str)
+    parser.add_argument("-numtbed", default=None, type=str)
+    parser.add_argument("-inputbam", default=None, type=str)
+    parser.add_argument("-outputdir", default=None, type=str)
+    parser.add_argument("-reference", default=None, type=str)
     args = parser.parse_args()
-    if args.bam_folderpath is not None:
-        copy_bam_files(args.bam_folderpath)
-    if args.bed_filename is not None:
-        shutil.copy(args.bed_filename, hardcoded_path.bed_dir) 
+    # if args.bam_folderpath is not None:
+    #     copy_bam_files(args.bam_folderpath)
+    # if args.bed_filename is not None:
+    #     shutil.copy(args.bed_filename, hardcoded_path.bed_dir) 
 
-    a = numt_chrM_overlapping_reads(hardcoded_path.bed_dir, hardcoded_path.bam_dir)
+    a = numt_chrM_overlapping_reads(args.numtbed, args.inputbam, args.outputdir, args.threads, args.reference)
     # a = numt_chrM_overlapping_reads(args.bed_filename, args.bam_folderpath)
     # copy_bam_files("original_files/Mt_input_bam")
     # a = numt_chrM_overlapping_reads(args.bed_file_name, args.bam_file_path)
