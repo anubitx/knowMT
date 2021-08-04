@@ -27,6 +27,7 @@ class numt_chrM_overlapping_reads():
         # self.bam_file_name = self.get_bam()
         bambase = os.path.basename(self.inputbam)
         self.outputbam = os.path.join(self.outputdir,os.path.splitext(bambase)[0] + ".numt_tag.bam")
+        self.nomcoutputbam = os.path.join(self.outputdir,os.path.splitext(bambase)[0] + ".nomc.bam")
         #self.step3_out = self.parse_bam_name_for_step3_outfile()
         self.generate_numt_tag()
         # self.step3_for_all_files()
@@ -89,24 +90,26 @@ class numt_chrM_overlapping_reads():
         # elif self.inputbam.endswith(".sam"):
         #     samfile = pysam.AlignmentFile(self.inputbam, 'r')
         # elif self.inputbam.endswith(".cram"):
-        #     samfile = pysam.AlignmentFile(self.inputbam, 'rc')
+        #     samfile = pysam.AlignmentFile(self.inputbam, 'rc', )
         samfile = pysam.AlignmentFile(self.inputbam, threads = self.threads, reference_filename = self.reference)
         outfile = pysam.AlignmentFile(self.outputbam, 'wb', header = samfile.header)
+        #nomcoutfile = pysam.AlignmentFile(self.nomcoutputbam, 'wb', header = samfile.header)
+        
         reads_retained = 0
         counts = 0
         for read in samfile:
-            if (not(read.is_unmapped)):
+            if (not(read.is_unmapped) and not(read.is_secondary) and not(read.is_supplementary)):
                 self_info = self.numt_Overlap(read.reference_name, read.reference_start, read.reference_end)
             else:
                 self_info = ("0", "0", "Unmapped", "-1" , "0")
-            if (not( read.mate_is_unmapped)):
+            if (not(read.mate_is_unmapped)):
 #                x = simplesam.Sam(cigar = read.get_tag("MC"))
                 mctag = self.robust_get_tag(read, "MC", "NoMC")
                 if mctag != "NoMC":
                     x = simplesam.Sam(cigar = mctag)
                     mate_info = self.numt_Overlap(read.next_reference_name, read.next_reference_start, read.next_reference_start + len(x))
-                else:
-                    print("WARN: NoMC =>", read)
+                #else:
+                #    nomcoutfile.write(read)
             else:
                 mate_info = ("0", "0", "Unmapped", "-1" , "0")
             if self_info[0] == "1" or mate_info[0] == "1":
@@ -114,11 +117,11 @@ class numt_chrM_overlapping_reads():
                 read.set_tag("Ni", ','.join(self_info + mate_info), value_type = "Z", replace = False)
                 outfile.write(read)
             counts += 1
-            if counts % 10000 == 0:
-                print("Total number of reads processed for the file:", counts)
-
-        print("Total number of reads that overlap numts/MT:",reads_retained)
-        print("Total number of reads processed for the file:", counts)
+            #if counts % 10000 == 0:
+            #    print("Total number of reads processed for the file:", counts)
+        print("Alignment file processed:", self.inputbam)
+        print("Number of reads processed:", counts)
+        print("Number of reads overlapping numts/MT:",reads_retained)
         outfile.close()  
 
     def step3_for_all_files(self):
