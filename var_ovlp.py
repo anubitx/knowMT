@@ -19,15 +19,13 @@ class remove_mitochondrial_noise():
         self.step3_out = self.parse_bam_name_for_step3_outfile()
         # self.step3_output_filename = self.get_step3_output()
         # self.step3_output_filename = sorted(os.listdir(self.Step3_output_dirpath))
-        self.step3_output_filename = sorted(os.listdir(hardcoded_path.step3_output_dir))
+        self.step3_output_filename = []
         self.counts_dict = defaultdict(int)
-        self.stepf_outfile_name = self.parse_name_for_Stepf_outfile()
         self.paired = set()
         self.get_input = self.get_input_for_insert()
-        self.final_mt = self.parse_name_for_MT_final_outfile()
-
-        
-        self.numt_reads = self.parse_name_numt_reads()
+        self.final_mt = []
+        self.stepf_outfile_name = []
+        self.numt_reads = []
         # print(os.path.join(hardcoded_path.step3_output_dir, self.con_Mt_filename))
 
     def parse_bam_name_for_step3_outfile(self):
@@ -55,6 +53,9 @@ class remove_mitochondrial_noise():
             s = subprocess.Popen([cmd], shell = True)
             out, err = s.communicate()
 
+        self.step3_output_filename = sorted(os.listdir(hardcoded_path.step3_output_dir))
+        
+
     # def get_step3_output(self):
         # return sorted(os.listdir(self.Step3_output_dirpath))
 
@@ -66,7 +67,6 @@ class remove_mitochondrial_noise():
             s = name.split('.')
             s.insert(-1, out_name)
             out_list.append('.'.join(s))
-        # print(out_list)
         return out_list
 
     def getreads_mapped_in_full_length(self,sam_file, out_file):
@@ -99,20 +99,25 @@ class remove_mitochondrial_noise():
             s.insert(-1, out_name)
             out_list.append('.'.join(s))
         # print(out_list)
+        self.numt_reads = out_list
         return out_list
 
     def get_insert_stats(self):
+        stepf_outfile_name = self.parse_name_for_Stepf_outfile()
+        self.parse_name_numt_reads()
+        self.parse_name_for_MT_final_outfile()
         for idx, name in enumerate(tqdm(self.step3_output_filename)):
             insert = []
             self.paired = set()
             self.counts_dict = defaultdict(int)
             # sam_file = pysam.AlignmentFile(os.path.join(self.Step3_output_dirpath,self.step3_output_filename[idx]), 'rb')
             sam_file = pysam.AlignmentFile(os.path.join(hardcoded_path.step3_output_dir,name), 'rb')
-            out_file =  pysam.AlignmentFile(os.path.join(hardcoded_path.stepf_outfile, self.stepf_outfile_name[idx]), 'wb', header = sam_file.header)
+            out_file =  pysam.AlignmentFile(os.path.join(hardcoded_path.stepf_outfile, stepf_outfile_name[idx]), 'wb', header = sam_file.header)
+            print(name, stepf_outfile_name[idx])
             self.getreads_mapped_in_full_length(sam_file,out_file)
             out_file.close()
             sam_file.close()
-            in_bam = pysam.AlignmentFile(os.path.join(hardcoded_path.stepf_outfile,self.stepf_outfile_name[idx]), 'rb')
+            in_bam = pysam.AlignmentFile(os.path.join(hardcoded_path.stepf_outfile,stepf_outfile_name[idx]), 'rb')
             self.get_counts_from_dict()
             for j in in_bam:
                 if j.query_name in self.paired:
@@ -132,7 +137,7 @@ class remove_mitochondrial_noise():
             print(f"Mean Insert Size:{mean_insert_size},SD Insert Size:{SD_insert_size},Population var Insert size:{pvar_insert_size}")
 
             Mitochondrial_reads_only =  pysam.AlignmentFile(os.path.join(hardcoded_path.Mt_reads_dir, self.final_mt[idx]), 'wb', header = in_bam.header)
-            in_bam = pysam.AlignmentFile(os.path.join(hardcoded_path.stepf_outfile,self.stepf_outfile_name[idx]), 'rb')
+            in_bam = pysam.AlignmentFile(os.path.join(hardcoded_path.stepf_outfile,stepf_outfile_name[idx]), 'rb')
             mt_origin_set = self.paired_end_reasonable_distance_reads([SD_99_low,SD_99_upp],Mitochondrial_reads_only ,in_bam)
             print("Total number of reads detected as Mitochondrial in origin:", len(mt_origin_set) * 2 )
             # Mitochondrial_reads_only.close()
@@ -141,6 +146,7 @@ class remove_mitochondrial_noise():
             ##ERR1019039.MT.csort.alignment.only_numt_reads.bam
             # numt_file = pysam.AlignmentFile(os.path.join(hardcoded_path.out_dir, self.out_file[idx]), 'rb')
             # sam_file = pysam.AlignmentFile(os.path.join(self.Step3_output_dirpath,name), 'rb')
+
             sam_file = pysam.AlignmentFile(os.path.join(hardcoded_path.step3_output_dir,name), 'rb')
             numt_reads = pysam.AlignmentFile(os.path.join(hardcoded_path.numt_reads,self.numt_reads[idx]), 'wb', header = sam_file.header)
             candidate_numt_reads = []
@@ -160,6 +166,8 @@ class remove_mitochondrial_noise():
             s = name.split('.')
             s.insert(-1, out_name)
             out_list.append('.'.join(s))
+            
+        self.final_mt = out_list
         return out_list
 
     def paired_end_reasonable_distance_reads(self, SD_range, Mitochondrial_reads_only, in_bam):
@@ -173,6 +181,8 @@ class remove_mitochondrial_noise():
                     Mitochondrial_reads_only.write(j)
                     
         return mt_origin_qn
+
+        
 
 c = remove_mitochondrial_noise()
 # c.getreads_mapped_in_full_length()
