@@ -10,28 +10,26 @@ import hardcoded_path
 import statistics
 
 class cluster_contigs():
-    def __init__(self) -> None:
-        self.out = defaultdict(list)
-        self.get_minimap_files()
+    def __init__(self, input_bam:str, output_dir:str, threads:int, ksize:int, input_bed:str) -> None:
+        self.input_bam = input_bam
+        self.output_dir = output_dir
+        self.threads = threads
+        self.input_bed = input_bed
+        bambase = os.path.basename(self.input_bam)
+        self.ksize = ksize
+        self.bambase = bambase
+        self.minimap_out = os.path.join(self.output_dir,os.path.splitext(bambase)[0] + f".spadesk{ksize}.minimap.sorted.bam")
+        self.mt_reads = os.path.join(self.output_dir,os.path.splitext(bambase)[0] + ".MT.origin.bam")
+        self.df_pickle = os.path.join(self.output_dir,os.path.splitext(bambase)[0] + ".flanking_df.pkl")
         self.ref_dict = defaultdict(list)
         self.ref_numt_dict()
-        self.mt_reads = sorted(os.listdir(hardcoded_path.Mt_reads_dir))
-        self.all_data_frame = defaultdict(list)
         # self.ns_ce_dist = []
         # self.ne_cs_dist = []
         # self.SD_range = self.get_insert_info()
         # print(self.SD_range)
 
-    def get_minimap_files(self):
-        sub_dirs = sorted(os.listdir(hardcoded_path.Minimap_output))
-        for sub_dir in sub_dirs:
-            print(sub_dir)
-            files = sorted(os.listdir(os.path.join(hardcoded_path.Minimap_output, sub_dir)))
-            for file in files:
-                self.out[sub_dir].append(file)
-
     def ref_numt_dict(self):
-        for line in open(hardcoded_path.bed_dir_without_chrM):
+        for line in open(self.input_bed):
             fields = line.rstrip().split("\t")
             self.ref_dict[fields[0]].append((fields[1], fields[2], fields[3]))
 
@@ -43,34 +41,7 @@ class cluster_contigs():
         name_list.append(tag)
         return name_list
 
-    def dump_df_to_pickle(self):
-        if not os.path.exists(os.path.join(hardcoded_path.orignal, 'flanking_contigs_df')):
-                os.mkdir(os.path.join(hardcoded_path.orignal, 'flanking_contigs_df'))
-        # print(self.all_data_frame)
-        for k, v in self.all_data_frame.items():
-        # print(self.all_data_frame)
-            # idx = 0
-            for values in v:
-                # print(values)
-            # print(v[0])
-            # if not os.path.exists(os.path.join(hardcoded_path.orignal, 'flanking_contigs_df', k)):
-                # os.mkdir(os.path.join(hardcoded_path.orignal, 'flanking_contigs_df', k))
-            # path = os.path.join(hardcoded_path.flank_df, k, f"{k}.df.pkl")
-
-            # idx = 0
-            # for file in v:
-            #     # print("[df]/df",file)
-                # path = os.path.join(hardcoded_path.orignal, 'flanking_contigs_df', k, f"df.{idx+1}.pkl")
-                path = os.path.join(hardcoded_path.orignal, 'flanking_contigs_df', f"{k}.flanking_df.pkl")
-            #     # final_df.to_pickle(self.all_data_frame[idx],path)
-            #     # final_df.to_pickle(path)
-                values.to_pickle(path)
-                # idx += 1
-        
-            # print(idx)
-
     def get_contig_numt_distance(self, contig_ref_name, contig_start, contig_end, contig_query_name):
-        
         # dist_dict = dict()
         closest_5p = None
         closest_3p = None
@@ -151,89 +122,74 @@ class cluster_contigs():
 
         return flank_5p, flank_3p, overlap_5p, overlap_3p, numt_contains_contig, contig_contains_numt
         
-    def get_insert_info(self, k):
-
-        for idx, name in enumerate(self.mt_reads):
-            if name.split(".")[0] == k:
-                mt_reads = pysam.AlignmentFile(os.path.join(hardcoded_path.Mt_reads_dir, name), 'rb')
-                insert = []
-                for i in mt_reads:
-                    # print(abs(i.template_length) - 200)
-                    insert_size = abs(i.template_length) - 200 
-                    insert.append(insert_size)      
-                mean_insert_size = statistics.mean(insert)
-                SD_insert_size = statistics.stdev(insert)
-                pvar_insert_size =  statistics.pvariance(insert, mu= mean_insert_size)
-                SD_99_low =  mean_insert_size - 3 * SD_insert_size 
-                SD_99_upp = mean_insert_size + 3 * SD_insert_size
-                return [SD_99_low,SD_99_upp]
-        assert(False, "Different file names") 
+    def get_insert_info(self):
+        mt_reads = pysam.AlignmentFile(self.mt_reads, 'rb', threads=self.threads)
+        insert = []
+        for i in mt_reads:
+            insert_size = abs(i.template_length) - 200 
+            insert.append(insert_size)      
+        mean_insert_size = statistics.mean(insert)
+        SD_insert_size = statistics.stdev(insert)
+        SD_99_low =  mean_insert_size - 3 * SD_insert_size 
+        SD_99_upp = mean_insert_size + 3 * SD_insert_size
+        return [SD_99_low,SD_99_upp]
 
     def get_clustered_contigs(self):
-
-        # print(ref_dict)
         nc = []
         all_tuples = []
         counter = 0
-        for k,v in self.out.items():
-            SD_range = self.get_insert_info(k)
-            print(SD_range)
-            for file in sorted(v): 
-                print(file)
-                if file.endswith(".bam"):
-                    bamfile = pysam.AlignmentFile(os.path.join(hardcoded_path.Minimap_output, k, file), "rb")
-                    # print(os.path.join(hardcoded_path.Minimap_output, k, file))
-                    distance_5p = []
-                    distance_3p = []
-                    num_contigs = []
-                    final_numt_info = []
-                    candidate_novel = []
-                    for contig in bamfile:
-                        # print(contig)  
-                        # self.ns_ce_dist = []
-                        # self.ne_cs_dist = []
-                        if (not(contig.is_unmapped)):
-                            num_contigs.append(contig.query_name)
-                            # print(contig.reference_name, contig.reference_start, contig.reference_end, contig.query_name)
-                            a = self.get_contig_numt_distance(contig.reference_name, contig.reference_start, contig.reference_end, contig.query_name + "_" + str(counter))
-                            counter += 1
-                            if len(a[0]) > 0:
-                                # distance_5p.append(a[0][0])
-                                if a[0][0] in range(round(SD_range[0]), round(SD_range[1])):
-                                    final_numt_info.append(a[0])
-                            if len(a[1]) > 0:
-                                # distance_3p.append(a[1][0])
-                                # print(a[1])
-                                if a[1][0] in range(round(SD_range[0]), round(SD_range[1])):
-                                    final_numt_info.append(a[1])
-                            if len(a[2]) > 0:
-                                final_numt_info.append(a[2])
-                            if len(a[3]) > 0:
-                                final_numt_info.append(a[3])
-                            if len(a[4]) > 0:
-                                final_numt_info.append(a[4])
-                            if len(a[5]) > 0:
-                                final_numt_info.append(a[5])
-                            elif len(a[0]) == 0 and len(a[1]) == 0 and len(a[2]) == 0 and len(a[3]) == 0 and len(a[4]) == 0 and len(a[5]) == 0:
-                                # if contig.query_sequence != None:
-                                # print(contig)
-                                candidate_novel.append([contig.query_name, contig.reference_start, contig.reference_name])
+        SD_range = self.get_insert_info()
+        print(SD_range)
+        bamfile = pysam.AlignmentFile(self.minimap_out, 'rb', threads=self.threads)
+        # print(os.path.join(hardcoded_path.Minimap_output, k, file))
+        distance_5p = []
+        distance_3p = []
+        num_contigs = []
+        final_numt_info = []
+        candidate_novel = []
+        for contig in bamfile:
+            # print(contig)  
+            # self.ns_ce_dist = []
+            # self.ne_cs_dist = []
+            if (not(contig.is_unmapped)):
+                num_contigs.append(contig.query_name)
+                # print(contig.reference_name, contig.reference_start, contig.reference_end, contig.query_name)
+                a = self.get_contig_numt_distance(contig.reference_name, contig.reference_start, contig.reference_end, contig.query_name + "_" + str(counter))
+                counter += 1
+                if len(a[0]) > 0:
+                    # distance_5p.append(a[0][0])
+                    if a[0][0] in range(round(SD_range[0]), round(SD_range[1])):
+                        final_numt_info.append(a[0])
+                if len(a[1]) > 0:
+                    # distance_3p.append(a[1][0])
+                    # print(a[1])
+                    if a[1][0] in range(round(SD_range[0]), round(SD_range[1])):
+                        final_numt_info.append(a[1])
+                if len(a[2]) > 0:
+                    final_numt_info.append(a[2])
+                if len(a[3]) > 0:
+                    final_numt_info.append(a[3])
+                if len(a[4]) > 0:
+                    final_numt_info.append(a[4])
+                if len(a[5]) > 0:
+                    final_numt_info.append(a[5])
+                elif len(a[0]) == 0 and len(a[1]) == 0 and len(a[2]) == 0 and len(a[3]) == 0 and len(a[4]) == 0 and len(a[5]) == 0:
+                    # if contig.query_sequence != None:
+                    # print(contig)
+                    candidate_novel.append([contig.query_name, contig.reference_start, contig.reference_name])
+        flank_df = pd.DataFrame(final_numt_info, columns=["Distance", "Contig", "Numt", "Overlap/flank"])
+        # print(flank_df)
+        # pd.set_option('display.max_rows', None) 
+        # pd.set_option('display.max_colwidth', None)
+        unique_numts = flank_df['Numt'].unique()
+        print("Total Number of unique reference numts",len(unique_numts))
+        candidate_novel_df = pd.DataFrame(candidate_novel, columns = ["Qname", "Ref_pos", "Ref_name"])
+        candidate_novel_df = candidate_novel_df.sort_values(by = ["Ref_name"])
+        # print(candidate_novel_df)
+        flank_df.to_pickle(self.df_pickle)
 
-                    flank_df = pd.DataFrame(final_numt_info, columns=["Distance", "Contig", "Numt", "Overlap/flank"])
-                    # pd.set_option('display.max_rows', None) 
-                    # pd.set_option('display.max_colwidth', None)
-                    unique_numts = flank_df['Numt'].unique()
-                    print("Total Number of unique reference numts",len(unique_numts))
-                    self.all_data_frame[k].append(flank_df)
-                    candidate_novel_df = pd.DataFrame(candidate_novel, columns = ["Qname", "Ref_pos", "Ref_name"])
-                    candidate_novel_df = candidate_novel_df.sort_values(by = ["Ref_name"])
-                    print(candidate_novel_df)
-                # self.all_data_frame[k].append(flank_df)
-            self.dump_df_to_pickle()
-            # break 
-
-cluster = cluster_contigs()
-cluster.get_clustered_contigs()
+# cluster = cluster_contigs()
+# cluster.get_clustered_contigs()
             # print(self.all_data_frame)
                 # flank_df.to_pickle(os.path.join(os.getcwd(), 'final_df.pkl'))
                 # flank3p_df = pd.DataFrame(final_df_3pF, columns=["Distance", "Contig", "Numt", "Overlap/flank"])
@@ -269,45 +225,6 @@ cluster.get_clustered_contigs()
             
                     # break
     
-
-
-
-           # plt.hist(insert)           
-        
-    #     df = pd.DataFrame(all_tuples, columns=['Chr','Start', 'End', 'Is_Reverse', 'Query_name'])
-    #     df[['Start', 'End']] = df[['Start', 'End']].astype(int)
-    #     df = df.sort_values(["Start"], ascending= True).groupby(["Chr"])
-    #     # a = df.groupby("Chr")
-    #     # for i,j in df:
-    #         # print(i)
-    #         # print(j)
-    #     # print(len(all_tuples))
-
-    # # def get_clustered_numts(self):
-    #     all_numt_tups = []
-    #     for line in open(hardcoded_path.bed_dir_without_chrM):
-    #         fields = line.rstrip().split("\t")
-    #         # c = list(zip(fields[0], int(fields[1]), int(fields[2]) , fields[3]))
-    #         all_numt_tups.append(tuple(fields))
-        
-    #     numt_df = pd.DataFrame(all_numt_tups, columns=['N_Chr','N_Start', 'N_End', 'Numt_name'])
-    #     # print(numt_df)
-    #     numt_df[['N_Start', 'N_End']] = numt_df[['N_Start', 'N_End']].astype(int)
-    #     numt_df = numt_df.sort_values(["N_Start"], ascending = True).groupby(["N_Chr"])
-
-    #     df['Chr'] == numt_df['N_Chr']
-    #     print(df['Query_name'])
-        # print(numt_df)
-# groupby(["Chr"])
-        # for i,j in numt_df:
-        #     print(i)
-        #     print(j)
-        
-
-
-
-
-
 # cluster = cluster_contigs()
 # cluster.get_clustered_contigs()
 # read_pickle_file = pd.read_pickle("/home/simarpreet/Desktop/Remote_pc_files/original_files/flanking_contigs_df/ERR1019039/df_1.pkl")
