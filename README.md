@@ -19,12 +19,12 @@ Ref_numt_grouped_blocks_final_with_chrM.bed
 2. Install all the above mentioned dependencies
 
 3. Parameters:  
--input_file default None
--numt_bed default None
--out_dir default None
--reference default None
--threads default 1
--ksize default 35
+-input_file default None,
+-numt_bed default None,
+-out_dir default None,
+-reference default None,
+-threads default 1,
+-ksize default 35,
 -path_to_spades None
 
 4. Run the following command:  
