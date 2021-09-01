@@ -29,6 +29,6 @@ Ref_numt_grouped_blocks_final_with_chrM.bed
 -path_to_spades None
 
 4. Run the following command:  
-python3 main.py -input_file <path/to/bam/your/file> -numt_bed <path/to/the/downloaded/bed/file/Ref_numt_grouped_blocks_final_with_chrM.bed> -out_dir <path/to/output/directory> -reference <path/to/reference.fasta/file> -threads <integer> -ksize <kmer/size/to/mask/reads> -path_to_spades <path/to/the/spades.py>  
+python3 knowMT.py -input_file <path/to/bam/your/file> -numt_bed <path/to/the/downloaded/bed/file/Ref_numt_grouped_blocks_final_with_chrM.bed> -out_dir <path/to/output/directory> -reference <path/to/reference.fasta/file> -threads <integer> -ksize <kmer/size/to/mask/reads> -path_to_spades <path/to/the/spades.py>  
 
 5. The output of this command is stored in a folder named OUTPUT.   
