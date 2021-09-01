@@ -1,5 +1,6 @@
-# nmt
-Discovery and annotation of polymorphic nuMTs in the human genome.  
+# knowMT
+## KnowMT: a software to detect Nuclear insertions of Mitochondrial Sequences (NumtS) in humans using whole genome sequence data  
+I have developed knowMT software to detect NumtS in the human whole genome sequence data. KnowMT successfully removes mitochondrial noise that confounds the detection of NumtS in the whole genome sequence data by (a) generating individual specific Mt sequence to filter Mt reads and (b) mask Mt similar sequences from Numts. Using this method, the flanking regions of the NumtS are enriched and detected to estimate the insertion points of NumtS in the genome.   
 
 Dependencies  
 Python 3.6  
